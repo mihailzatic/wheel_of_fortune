@@ -1,0 +1,157 @@
+import tkinter as tk
+from tkinter import ttk
+import pygame  # For sound effects
+import threading
+import time
+import textwrap
+
+class WheelOfFortuneApp:
+    def __init__(self, root, file_path="phrases.txt"):
+        self.root = root
+        self.root.title("Wheel of Fortune")
+        self.root.attributes("-fullscreen", True)  # Full-screen mode
+        self.root.configure(bg="#000000")  # Dark background
+        
+        pygame.mixer.init()  # Initialize pygame for sounds
+        self.load_sounds()
+
+        self.file_path = file_path
+        self.load_phrases()
+        self.current_round = 0
+        self.flashing = False  # Controls flashing animation
+
+        self.letters = set()
+        self.revealed_letters = set()
+        self.letter_labels = []
+
+        self.create_ui()
+        self.display_phrase()
+        
+        self.root.bind("<KeyPress>", self.reveal_letter)  # Detect key presses
+        self.root.bind("<Return>", self.next_round)  # Enter key for next round
+        self.root.bind("<Escape>", self.exit_fullscreen)  # Escape to exit full-screen
+
+    def load_sounds(self):
+        """Loads sound effects."""
+        self.reveal_sound = pygame.mixer.Sound("reveal.wav")  # Letter reveal sound
+        self.wrong_sound = pygame.mixer.Sound("wrong.wav")  # Wrong letter sound
+
+    def load_phrases(self):
+        """Reads phrases from the text file."""
+        try:
+            with open(self.file_path, "r", encoding="utf-8") as file:
+                self.phrases = [line.rstrip().upper() for line in file if line.strip()]
+        except FileNotFoundError:
+            self.phrases = ["O FRAZĂ ESTE O SELECȚIE SCURTĂ DE CUVINTE CARE CREEAZĂ UN CONCEPT"]
+
+    def create_ui(self):
+        """Creates the UI layout."""
+        self.frame = tk.Frame(self.root, bg="#000000")
+        self.frame.pack(expand=True)
+
+    def display_phrase(self):
+        """Displays the current phrase in a Wheel of Fortune style grid."""
+        for widget in self.frame.winfo_children():
+            widget.destroy()
+        
+        if self.current_round >= len(self.phrases):
+            self.show_end_message()
+            return
+
+        self.letter_labels = []
+        self.revealed_letters.clear()
+        self.flashing = False
+
+        phrase = self.phrases[self.current_round]
+        self.letters = set(phrase.replace(" ", ""))  # Unique letters
+        wrapped_lines = textwrap.wrap(phrase, width=14)  # Ensures multiple rows
+
+        board_frame = tk.Frame(self.frame, bg="#000000")
+        board_frame.pack(expand=True)
+
+        for line in wrapped_lines:
+            line_frame = tk.Frame(board_frame, bg="#000000")
+            line_frame.pack()
+            row_labels = []
+            for char in line:
+                lbl = tk.Label(
+                    line_frame,
+                    text="" if char != " " else " ",
+                    font=("Arial", 48, "bold"),
+                    width=2,
+                    height=1,
+                    relief="ridge",
+                    background="#00ff00",  # Greenish background like the show
+                    foreground="black",
+                    padx=10,
+                    pady=10
+                )
+                lbl.pack(side=tk.LEFT, padx=2, pady=2)
+                row_labels.append((char, lbl))
+            self.letter_labels.extend(row_labels)
+
+    def reveal_letter(self, event):
+        """Reveals letters when pressed and checks if the phrase is fully revealed."""
+        char = event.char.upper()
+        romanian_chars = "ĂÂÎȘȚĂâîșț"
+        if char in romanian_chars or char.lower() in romanian_chars:
+            char = char.upper()
+        
+        if char in self.letters:
+            if char not in self.revealed_letters:
+                self.revealed_letters.add(char)
+                self.reveal_sound.play()
+                for letter, lbl in self.letter_labels:
+                    if letter == char:
+                        lbl.config(text=char, background="#27AE60", foreground="white")
+                
+                if self.revealed_letters == self.letters:
+                    self.start_flashing_effect()
+        else:
+            if char not in self.revealed_letters:
+                self.wrong_sound.play()  # Play sound for incorrect letter
+
+    def start_flashing_effect(self):
+        """Starts the flashing effect when the puzzle is solved."""
+        if not self.flashing:
+            self.flashing = True
+            threading.Thread(target=self.flash_effect, daemon=True).start()
+
+    def flash_effect(self):
+        """Flashes letters to indicate completion."""
+        colors = ["yellow", "white"]
+        while self.flashing:
+            for color in colors:
+                for _, lbl in self.letter_labels:
+                    lbl.config(background=color, foreground="black")
+                self.root.update()
+                time.sleep(0.3)
+
+    def next_round(self, event=None):
+        """Moves to the next phrase."""
+        self.flashing = False  # Stop flashing
+        pygame.mixer.stop()
+        self.current_round += 1
+        self.display_phrase()
+
+    def show_end_message(self):
+        """Displays the end message."""
+        for widget in self.frame.winfo_children():
+            widget.destroy()
+
+        tk.Label(
+            self.frame,
+            text="Game Over! Thanks for playing!",
+            font=("Arial", 50, "bold"),
+            background="#000000",
+            foreground="white"
+        ).pack(expand=True)
+
+    def exit_fullscreen(self, event=None):
+        """Exits full-screen mode."""
+        self.root.attributes("-fullscreen", False)
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = WheelOfFortuneApp(root, file_path="phrases.txt")
+    root.mainloop()
