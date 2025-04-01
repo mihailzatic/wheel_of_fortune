@@ -83,7 +83,7 @@ class WheelOfFortuneApp:
         self.showing_image = False
 
         phrase = self.phrases[self.current_round]
-        self.letters = set(phrase.replace(" ", ""))  # Unique letters
+        self.letters = set(phrase.replace(" ", "").replace(",", ""))  # Unique letters (excluding spaces and commas)
         wrapped_lines = textwrap.wrap(phrase, width=14)  # Ensures multiple rows
 
         board_frame = tk.Frame(self.frame, bg="#000000")
@@ -97,7 +97,7 @@ class WheelOfFortuneApp:
                 color = "#004400" if char == " " else "#00ff00"  # Dark green for spaces
                 lbl = tk.Label(
                     line_frame,
-                    text="" if char != " " else " ",
+                    text="" if char != " " and char != "," else char,  # Show commas immediately
                     font=("Arial", 48, "bold"),
                     width=2,
                     height=1,
@@ -122,6 +122,13 @@ class WheelOfFortuneApp:
 
         romanian_map = {"ă": "Ă", "â": "Â", "î": "Î", "ș": "Ș", "ț": "Ț", "Ă": "Ă", "Â": "Â", "Î": "Î", "Ș": "Ș", "Ț": "Ț"}
         char = romanian_map.get(char, char).upper()  # Convert to uppercase if needed
+
+        if char == ",":
+            # Display the comma immediately
+            for letter, lbl in self.letter_labels:
+                if letter == ",":
+                    lbl.config(text=",", background="#27AE60", foreground="white")
+            return
 
         if char in self.letters:
             if char not in self.revealed_letters:
