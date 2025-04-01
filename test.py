@@ -4,32 +4,34 @@ import pygame  # For sound effects
 import threading
 import time
 import textwrap
+from PIL import Image, ImageTk  # For displaying images
 
 class WheelOfFortuneApp:
-    def __init__(self, root, file_path="phrases.txt"):
+    def __init__(self, root, file_path="phrases.txt", image_path="roata.jpg"):
         self.root = root
         self.root.title("Wheel of Fortune")
         self.root.attributes("-fullscreen", True)  # Full-screen mode
         self.root.configure(bg="#000000")  # Dark background
-        
+
         pygame.mixer.init()  # Initialize pygame for sounds
         self.load_sounds()
 
         self.file_path = file_path
+        self.image_path = image_path
         self.load_phrases()
-        self.current_round = 0
+        self.current_round = -1  # Start with image first
         self.flashing = False  # Controls flashing animation
+        self.showing_image = True  # Controls when image is displayed
 
         self.letters = set()
         self.revealed_letters = set()
         self.letter_labels = []
 
         self.create_ui()
-        self.display_phrase()
+        self.display_image()  # Show image first
         
         self.root.bind("<KeyPress>", self.reveal_letter)  # Detect key presses
         self.root.bind("<Return>", self.next_round)  # Enter key for next round
-        self.root.bind("<Escape>", self.exit_fullscreen)  # Escape to exit full-screen
 
     def load_sounds(self):
         """Loads sound effects."""
@@ -47,20 +49,38 @@ class WheelOfFortuneApp:
     def create_ui(self):
         """Creates the UI layout."""
         self.frame = tk.Frame(self.root, bg="#000000")
-        self.frame.pack(expand=True)
+        self.frame.pack(expand=True, fill=tk.BOTH)
 
+    def display_image(self):
+        """Displays the image before the next round starts."""
+        for widget in self.frame.winfo_children():
+            widget.destroy()
+        
+        screen_width = self.root.winfo_screenwidth()
+        screen_height = self.root.winfo_screenheight()
+        
+        img = Image.open(self.image_path)
+        img = img.resize((screen_width, screen_height), Image.Resampling.LANCZOS)
+        self.tk_image = ImageTk.PhotoImage(img)
+
+        label = tk.Label(self.frame, image=self.tk_image, bg="#000000")
+        label.pack(expand=True, fill=tk.BOTH)
+
+        self.showing_image = True  # Image is being displayed
+    
     def display_phrase(self):
         """Displays the current phrase in a Wheel of Fortune style grid."""
         for widget in self.frame.winfo_children():
             widget.destroy()
         
         if self.current_round >= len(self.phrases):
-            self.show_end_message()
+            self.display_image()  # Show image instead of "Game Over"
             return
 
         self.letter_labels = []
         self.revealed_letters.clear()
         self.flashing = False
+        self.showing_image = False
 
         phrase = self.phrases[self.current_round]
         self.letters = set(phrase.replace(" ", ""))  # Unique letters
@@ -74,6 +94,7 @@ class WheelOfFortuneApp:
             line_frame.pack()
             row_labels = []
             for char in line:
+                color = "#004400" if char == " " else "#00ff00"  # Dark green for spaces
                 lbl = tk.Label(
                     line_frame,
                     text="" if char != " " else " ",
@@ -81,7 +102,7 @@ class WheelOfFortuneApp:
                     width=2,
                     height=1,
                     relief="ridge",
-                    background="#00ff00",  # Greenish background like the show
+                    background=color,  # Different background for spaces
                     foreground="black",
                     padx=10,
                     pady=10
@@ -92,11 +113,13 @@ class WheelOfFortuneApp:
 
     def reveal_letter(self, event):
         """Reveals letters when pressed and checks if the phrase is fully revealed."""
-        char = event.char.upper()
-        romanian_chars = "ĂÂÎȘȚĂâîșț"
-        if char in romanian_chars or char.lower() in romanian_chars:
-            char = char.upper()
-        
+        if self.showing_image:
+            return  # Ignore key presses when image is displayed
+
+        char = event.char
+        romanian_map = {"ă": "Ă", "â": "Â", "î": "Î", "ș": "Ș", "ț": "Ț", "Ă": "Ă", "Â": "Â", "Î": "Î", "Ș": "Ș", "Ț": "Ț"}
+        char = romanian_map.get(char, char).upper()  # Convert to uppercase if needed
+
         if char in self.letters:
             if char not in self.revealed_letters:
                 self.revealed_letters.add(char)
@@ -128,30 +151,16 @@ class WheelOfFortuneApp:
                 time.sleep(0.3)
 
     def next_round(self, event=None):
-        """Moves to the next phrase."""
+        """Moves to the next phrase or displays the image."""
         self.flashing = False  # Stop flashing
         pygame.mixer.stop()
-        self.current_round += 1
-        self.display_phrase()
-
-    def show_end_message(self):
-        """Displays the end message."""
-        for widget in self.frame.winfo_children():
-            widget.destroy()
-
-        tk.Label(
-            self.frame,
-            text="Game Over! Thanks for playing!",
-            font=("Arial", 50, "bold"),
-            background="#000000",
-            foreground="white"
-        ).pack(expand=True)
-
-    def exit_fullscreen(self, event=None):
-        """Exits full-screen mode."""
-        self.root.attributes("-fullscreen", False)
+        if self.showing_image:
+            self.current_round += 1
+            self.display_phrase()
+        else:
+            self.display_image()
 
 if __name__ == "__main__":
     root = tk.Tk()
-    app = WheelOfFortuneApp(root, file_path="phrases.txt")
+    app = WheelOfFortuneApp(root, file_path="phrases.txt", image_path="roata.jpg")
     root.mainloop()
