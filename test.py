@@ -32,6 +32,7 @@ class WheelOfFortuneApp:
         
         self.root.bind("<KeyPress>", self.reveal_letter)  # Detect key presses
         self.root.bind("<Return>", self.next_round)  # Enter key for next round
+        self.root.bind("3", self.reveal_entire_phrase)  # Bind '3' to reveal phrase
 
     def load_sounds(self):
         """Loads sound effects."""
@@ -116,19 +117,9 @@ class WheelOfFortuneApp:
         if self.showing_image:
             return  # Ignore key presses when image is displayed
 
-        # Map keys 1 and 2 to ș and ț
-        key_map = {"1": "Ș", "2": "Ț"}
-        char = key_map.get(event.char, event.char)  # Map key if applicable
-
-        romanian_map = {"ă": "Ă", "â": "Â", "î": "Î", "ș": "Ș", "ț": "Ț", "Ă": "Ă", "Â": "Â", "Î": "Î", "Ș": "Ș", "Ț": "Ț"}
-        char = romanian_map.get(char, char).upper()  # Convert to uppercase if needed
-
+        char = event.char.upper()
         if char == ",":
-            # Display the comma immediately
-            for letter, lbl in self.letter_labels:
-                if letter == ",":
-                    lbl.config(text=",", background="#27AE60", foreground="white")
-            return
+            return  # Commas are always revealed
 
         if char in self.letters:
             if char not in self.revealed_letters:
@@ -143,6 +134,18 @@ class WheelOfFortuneApp:
         else:
             if char not in self.revealed_letters:
                 self.wrong_sound.play()  # Play sound for incorrect letter
+
+    def reveal_entire_phrase(self, event=None):
+        """Reveals the entire phrase when '3' is pressed."""
+        if self.showing_image:
+            return  # Ignore if image is displayed
+
+        self.revealed_letters = self.letters.copy()  # Mark all letters as revealed
+        for letter, lbl in self.letter_labels:
+            if letter != " " and letter != ",":
+                lbl.config(text=letter, background="#27AE60", foreground="white")
+        
+        self.start_flashing_effect()  # Trigger flashing effect
 
     def start_flashing_effect(self):
         """Starts the flashing effect when the puzzle is solved."""
