@@ -1,46 +1,45 @@
 import tkinter as tk
 from tkinter import ttk
-import pygame  # For sound effects
+import pygame
 import threading
 import time
 import textwrap
-from PIL import Image, ImageTk  # For displaying images
+from PIL import Image, ImageTk
 
 class WheelOfFortuneApp:
     def __init__(self, root, file_path="phrases.txt", image_path="roata.jpg"):
         self.root = root
         self.root.title("Wheel of Fortune")
-        self.root.attributes("-fullscreen", True)  # Full-screen mode
-        self.root.configure(bg="#000000")  # Dark background
+        self.root.attributes("-fullscreen", True)
+        self.root.configure(bg="#000000")
 
-        pygame.mixer.init()  # Initialize pygame for sounds
+        pygame.mixer.init()
         self.load_sounds()
 
         self.file_path = file_path
         self.image_path = image_path
         self.load_phrases()
-        self.current_round = -1  # Start with image first
-        self.flashing = False  # Controls flashing animation
-        self.showing_image = True  # Controls when image is displayed
+        self.current_round = -1
+        self.flashing = False
+        self.showing_image = True
 
         self.letters = set()
         self.revealed_letters = set()
         self.letter_labels = []
 
         self.create_ui()
-        self.display_image()  # Show image first
+        self.display_image()
         
-        self.root.bind("<KeyPress>", self.reveal_letter)  # Detect key presses
-        self.root.bind("<Return>", self.next_round)  # Enter key for next round
-        self.root.bind("3", self.reveal_entire_phrase)  # Bind '3' to reveal phrase
+        self.root.bind("<KeyPress>", self.reveal_letter)
+        self.root.bind("<Return>", self.next_round)
+        self.root.bind("3", self.reveal_entire_phrase)
+
 
     def load_sounds(self):
-        """Loads sound effects."""
-        self.reveal_sound = pygame.mixer.Sound("reveal.wav")  # Letter reveal sound
-        self.wrong_sound = pygame.mixer.Sound("wrong.wav")  # Wrong letter sound
+        self.reveal_sound = pygame.mixer.Sound("reveal.wav")
+        self.wrong_sound = pygame.mixer.Sound("wrong.wav")
 
     def load_phrases(self):
-        """Reads phrases from the text file."""
         try:
             with open(self.file_path, "r", encoding="utf-8") as file:
                 self.phrases = [line.rstrip().upper() for line in file if line.strip()]
@@ -48,12 +47,10 @@ class WheelOfFortuneApp:
             self.phrases = ["O FRAZĂ ESTE O SELECȚIE SCURTĂ DE CUVINTE CARE CREEAZĂ UN CONCEPT"]
 
     def create_ui(self):
-        """Creates the UI layout."""
         self.frame = tk.Frame(self.root, bg="#000000")
         self.frame.pack(expand=True, fill=tk.BOTH)
 
     def display_image(self):
-        """Displays the image before the next round starts."""
         for widget in self.frame.winfo_children():
             widget.destroy()
         
@@ -67,15 +64,14 @@ class WheelOfFortuneApp:
         label = tk.Label(self.frame, image=self.tk_image, bg="#000000")
         label.pack(expand=True, fill=tk.BOTH)
 
-        self.showing_image = True  # Image is being displayed
+        self.showing_image = True
     
     def display_phrase(self):
-        """Displays the current phrase in a Wheel of Fortune style grid."""
         for widget in self.frame.winfo_children():
             widget.destroy()
         
         if self.current_round >= len(self.phrases):
-            self.display_image()  # Show image instead of "Game Over"
+            self.display_image()
             return
 
         self.letter_labels = []
@@ -84,8 +80,8 @@ class WheelOfFortuneApp:
         self.showing_image = False
 
         phrase = self.phrases[self.current_round]
-        self.letters = set(phrase.replace(" ", "").replace(",", ""))  # Unique letters (excluding spaces and commas)
-        wrapped_lines = textwrap.wrap(phrase, width=14)  # Ensures multiple rows
+        self.letters = set(phrase.replace(" ", "").replace(",", "").replace("-", ""))
+        wrapped_lines = textwrap.wrap(phrase, width=14)
 
         board_frame = tk.Frame(self.frame, bg="#000000")
         board_frame.pack(expand=True)
@@ -95,31 +91,51 @@ class WheelOfFortuneApp:
             line_frame.pack()
             row_labels = []
             for char in line:
-                color = "#004400" if char == " " else "#00ff00"  # Dark green for spaces
-                lbl = tk.Label(
-                    line_frame,
-                    text="" if char != " " and char != "," else char,  # Show commas immediately
-                    font=("Arial", 48, "bold"),
-                    width=2,
-                    height=1,
-                    relief="ridge",
-                    background=color,  # Different background for spaces
-                    foreground="black",
-                    padx=10,
-                    pady=10
-                )
+                if char in " ,-.!?":
+                    # Punctuation and spaces
+                    color = "#004400"
+                    lbl = tk.Label(
+                        line_frame,
+                        text=char,
+                        font=("Arial", 48, "bold"),
+                        width=2,
+                        height=1,
+                        relief="ridge",
+                        background=color,
+                        foreground="black",
+                        padx=10,
+                        pady=10
+                    )
+                else:
+                    # Regular letters
+                    color = "#00ff00"
+                    lbl = tk.Label(
+                        line_frame,
+                        text="",
+                        font=("Arial", 48, "bold"),
+                        width=2,
+                        height=1,
+                        relief="ridge",
+                        background=color,
+                        foreground="black",
+                        padx=10,
+                        pady=10
+                    )
                 lbl.pack(side=tk.LEFT, padx=2, pady=2)
                 row_labels.append((char, lbl))
             self.letter_labels.extend(row_labels)
 
     def reveal_letter(self, event):
-        """Reveals letters when pressed and checks if the phrase is fully revealed."""
         if self.showing_image:
-            return  # Ignore key presses when image is displayed
+            return
 
         char = event.char.upper()
-        if char == ",":
-            return  # Commas are always revealed
+
+        # Ignore non-character keys and special keys
+        ignored_keys = {"Alt_L", "Alt_R", "Caps_Lock", "Control_L", "Control_R", 
+                        "Shift_L", "Shift_R", "BackSpace", "Tab", "Escape", "Return"}
+        if event.keysym in ignored_keys or not char.isalpha() and char not in " ,-.!?":
+            return
 
         if char in self.letters:
             if char not in self.revealed_letters:
@@ -133,28 +149,25 @@ class WheelOfFortuneApp:
                     self.start_flashing_effect()
         else:
             if char not in self.revealed_letters:
-                self.wrong_sound.play()  # Play sound for incorrect letter
+                self.wrong_sound.play()
 
     def reveal_entire_phrase(self, event=None):
-        """Reveals the entire phrase when '3' is pressed."""
         if self.showing_image:
-            return  # Ignore if image is displayed
+            return
 
-        self.revealed_letters = self.letters.copy()  # Mark all letters as revealed
+        self.revealed_letters = self.letters.copy()
         for letter, lbl in self.letter_labels:
             if letter != " " and letter != ",":
                 lbl.config(text=letter, background="#27AE60", foreground="white")
         
-        self.start_flashing_effect()  # Trigger flashing effect
+        self.start_flashing_effect()
 
     def start_flashing_effect(self):
-        """Starts the flashing effect when the puzzle is solved."""
         if not self.flashing:
             self.flashing = True
             threading.Thread(target=self.flash_effect, daemon=True).start()
 
     def flash_effect(self):
-        """Flashes letters to indicate completion."""
         colors = ["yellow", "white"]
         while self.flashing:
             for color in colors:
@@ -164,8 +177,7 @@ class WheelOfFortuneApp:
                 time.sleep(0.3)
 
     def next_round(self, event=None):
-        """Moves to the next phrase or displays the image."""
-        self.flashing = False  # Stop flashing
+        self.flashing = False
         pygame.mixer.stop()
         if self.showing_image:
             self.current_round += 1
