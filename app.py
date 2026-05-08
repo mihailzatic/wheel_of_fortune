@@ -6,7 +6,7 @@ import textwrap
 from PIL import Image, ImageTk
 
 class WheelOfFortuneApp:
-    def __init__(self, root, file_path="phrases.txt", image_path="wheel.jpg"):
+    def __init__(self, root, file_path="phrases.txt", image_path="assets/wheel.jpg"):
         self.root = root
         self.root.title("Wheel of Fortune")
         self.root.attributes("-fullscreen", True)
@@ -42,8 +42,8 @@ class WheelOfFortuneApp:
 
     def load_sounds(self):
         try:
-            self.reveal_sound = pygame.mixer.Sound("reveal.wav")
-            self.wrong_sound = pygame.mixer.Sound("wrong.wav")
+            self.reveal_sound = pygame.mixer.Sound("assets/reveal.wav")
+            self.wrong_sound = pygame.mixer.Sound("assets/wrong.wav")
         except FileNotFoundError:
             print("Warning: Sound files not found. Continuing without sound.")
             class DummySound:
